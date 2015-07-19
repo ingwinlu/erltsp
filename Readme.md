@@ -1,3 +1,3 @@
-# erltspevo
+# erltsp
 
-Erlang implementation of an tsp solver using evo
+Erlang implementation of an tsp solver
