@@ -33,8 +33,8 @@ handle_call(_Request, State) ->
     Reply = ok,
     {ok, Reply, State}.
 
-handle_info(_Info, _State) ->
-    ok.
+handle_info(_Info, State) ->
+    {ok, State}.
 
 terminate(_Reason, _State) ->
     ok.
