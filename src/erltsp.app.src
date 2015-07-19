@@ -1,4 +1,4 @@
-{application, erltspevo, [
+{application, erltsp, [
 	{description, ""},
 	{vsn, "0.1.0"},
 	{id, "git"},
@@ -8,6 +8,6 @@
 		kernel,
 		stdlib
 	]},
-	{mod, {erltspevo_app, []}},
+	{mod, {erltsp_app, []}},
 	{env, []}
 ]}.

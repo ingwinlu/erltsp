@@ -1,4 +1,4 @@
--module(erltspevo_sup).
+-module(erltsp_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).

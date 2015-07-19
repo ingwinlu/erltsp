@@ -1,4 +1,4 @@
-PROJECT = erltspevo
+PROJECT = erltsp
 
 SP = 4
 

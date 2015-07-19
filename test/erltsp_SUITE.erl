@@ -1,9 +1,9 @@
--module(erltspevo_SUITE).
+-module(erltsp_SUITE).
 -include_lib("common_test/include/ct.hrl").
 -compile(export_all).
 
 init_per_suite(Config) ->
-    application:ensure_all_started(erltspevo),
+    application:ensure_all_started(erltsp),
     Config.
 
 end_per_suite(_Config) ->
