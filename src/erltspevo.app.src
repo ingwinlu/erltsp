@@ -1,0 +1,13 @@
+{application, erltspevo, [
+	{description, ""},
+	{vsn, "0.1.0"},
+	{id, "git"},
+	{modules, []},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib
+	]},
+	{mod, {erltspevo_app, []}},
+	{env, []}
+]}.

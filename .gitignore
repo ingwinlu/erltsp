@@ -1,0 +1,16 @@
+#vim
+*.swp
+
+#erlang
+*.beam
+*.plt
+
+ebin
+relx
+
+#erlang.mk
+_rel/
+deps/
+logs/
+.erlang.mk/
+.erlang.mk.packages.*
