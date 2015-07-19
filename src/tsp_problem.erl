@@ -8,18 +8,30 @@
          precedences/1
         ]).
 
-% PATTERNS
+% TYPES
+-type tsp_problem() :: #{
+        file => Filename :: file:name_all(),
+        dimension => Dimension :: non_neg_integer(),
+        threshold => Threshold :: number(),
+        nodelist => Nodelist :: tsp_nodelist(),
+        precedences => Precedences :: [precedence()]
+       }.
 
-pattern_dimension() -> re:compile("DIMENSION:\\\s+([0-9]+)").
-pattern_threshold() -> re:compile("THRESHOLD:\\\s+([0-9]+(\\\.[0-9]+)?)").
-pattern_node() -> re:compile("\\\s*([0-9]+)\\s+([0-9]+(\\\.[0-9]+)?)\\s+([0-9]+(\\\.[0-9]+)?)").
-pattern_precedence() -> re:compile("\\\s*([0-9]+)\\\s+([0-9]+)").
+-type tsp_nodelist() :: dict:dict(
+                          Id :: non_neg_integer(),
+                          Tsp_Node :: tsp_node()).
 
-re_options() -> [
-    {capture, all, list}
-].
+-type tsp_node() :: #{
+        id => Id :: non_neg_integer(),
+        x => X_Coordinate :: integer(),
+        y => Y_Coordinate :: integer()
+       }.
+
+-type precedence() :: {First :: non_neg_integer(),
+                       Second :: non_neg_integer()}.
 
 % API
+-spec from_file(File :: file:name_all()) -> Problem :: tsp_problem().
 from_file(File) ->
     {ok, IODev} = file:open(File, [read, read_ahead]),
     {ok, Dimension} = parse_dimension(IODev),
@@ -43,6 +55,18 @@ dimension(Problem) -> maps:get(dimension, Problem).
 threshold(Problem) -> maps:get(threshold, Problem).
 nodelist(Problem) -> maps:get(nodelist, Problem).
 precedences(Problem) -> maps:get(precedences, Problem).
+
+
+% PATTERNS
+pattern_dimension() -> re:compile("DIMENSION:\\\s+([0-9]+)").
+pattern_threshold() -> re:compile("THRESHOLD:\\\s+([0-9]+(\\\.[0-9]+)?)").
+pattern_node() -> re:compile("\\\s*([0-9]+)\\s+([0-9]+(\\\.[0-9]+)?)\\s+([0-9]+(\\\.[0-9]+)?)").
+pattern_precedence() -> re:compile("\\\s*([0-9]+)\\\s+([0-9]+)").
+
+re_options() -> [
+    {capture, all, list}
+].
+
 
 % PRIV
 
