@@ -8,5 +8,29 @@ start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-	Procs = [],
-	{ok, {{one_for_one, 1, 5}, Procs}}.
+    Procs = [
+        tsp_event()
+    ],
+    {ok, {sup_flags(), Procs}}.
+
+
+sup_flags() ->
+    #{
+        strategy => one_for_one,
+        intensity => 1,
+        period => 5
+    }.
+
+tsp_event() ->
+    #{
+        id => tsp_event,
+        start => {
+                    tsp_event,
+                    start_link,
+                    []
+                 },
+        restart => permanent,
+        shutdown => 5000,
+        type => worker,
+        modules => [tsp_event]
+    }.
