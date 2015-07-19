@@ -1,6 +1,12 @@
 -module(tsp_problem).
 
 -export([from_file/1]).
+-export([file/1,
+         dimension/1,
+         threshold/1,
+         nodelist/1,
+         precedences/1
+        ]).
 
 % PATTERNS
 
@@ -14,9 +20,7 @@ re_options() -> [
 ].
 
 % API
-
 from_file(File) ->
-    error_logger:info_msg("loading Problem from " ++ File),
     {ok, IODev} = file:open(File, [read, read_ahead]),
     {ok, Dimension} = parse_dimension(IODev),
     {ok, Threshold} = parse_threshold(IODev),
@@ -24,15 +28,21 @@ from_file(File) ->
     {ok, NodeList} = parse_nodes(IODev, Dimension),
     {ok, "PRECEDENCE_SECTION\n"} = file:read_line(IODev),
     {ok, PrecedenceList} = parse_precedences(IODev),
-    #{
+    Problem = #{
         file => File,
         dimension => Dimension,
         threshold => Threshold,
-        nodes => NodeList,
+        nodelist => NodeList,
         precedences => PrecedenceList
-    }.
+    },
+    tsp_event:load_problem(Problem),
+    Problem.
 
-
+file(Problem) -> maps:get(file, Problem).
+dimension(Problem) -> maps:get(dimension, Problem).
+threshold(Problem) -> maps:get(threshold, Problem).
+nodelist(Problem) -> maps:get(nodelist, Problem).
+precedences(Problem) -> maps:get(precedences, Problem).
 
 % PRIV
 

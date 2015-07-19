@@ -3,6 +3,7 @@
 -compile(export_all).
 
 init_per_suite(Config) ->
+    application:ensure_all_started(erltspevo),
     Config.
 
 end_per_suite(_Config) ->
@@ -31,17 +32,17 @@ parse_n10_a280_1(Config) ->
     File = data_dir(Config) ++ "n10_a280.1.tspp",
     Problem = tsp_problem:from_file(File),
 
-    10 = maps:get(dimension, Problem),
-    970.29 = maps:get(threshold, Problem),
+    10 = tsp_problem:dimension(Problem),
+    970.29 = tsp_problem:threshold(Problem),
 
-    Nodes = maps:get(nodes, Problem),
+    Nodes = tsp_problem:nodelist(Problem),
 
     Node1 = dict:fetch(1, Nodes),
     1 = maps:get(id, Node1),
     32 = maps:get(x, Node1),
     65 = maps:get(y, Node1),
 
-    Precedences = maps:get(precedences, Problem),
+    Precedences = tsp_problem:precedences(Problem),
     [{1,5},{9,1}] == Precedences.
 
 parse_all_problems(Config) ->
