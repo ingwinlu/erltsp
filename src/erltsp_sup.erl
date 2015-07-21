@@ -9,7 +9,8 @@ start_link() ->
 
 init([]) ->
     Procs = [
-        tsp_event()
+        tsp_event(),
+        tsp_runner()
     ],
     {ok, {sup_flags(), Procs}}.
 
@@ -34,3 +35,18 @@ tsp_event() ->
         type => worker,
         modules => [tsp_event]
     }.
+
+tsp_runner() ->
+    #{
+        id => tsp_runner,
+        start => {
+                    tsp_runner,
+                    start_link,
+                    []
+                 },
+        restart => permanent,
+        shutdown => 5000,
+        type => worker,
+        modules => [tsp_runner]
+    }.
+

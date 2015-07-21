@@ -1,13 +1,14 @@
 {application, erltsp, [
-	{description, ""},
-	{vsn, "0.1.0"},
-	{id, "git"},
-	{modules, []},
-	{registered, []},
-	{applications, [
-		kernel,
-		stdlib
-	]},
-	{mod, {erltsp_app, []}},
-	{env, []}
+    {description, ""},
+    {vsn, "0.1.0"},
+    {id, "git"},
+    {modules, []},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        crypto
+    ]},
+    {mod, {erltsp_app, []}},
+    {env, []}
 ]}.
