@@ -3,7 +3,9 @@
 
 %% API.
 -export([start_link/0, set_problem/1, set_timeout/1, set_solver/1,
-         run/0, stop/0]).
+         run/0, stop/0, best/0]).
+-export([looper/3]).
+
 
 %% gen_fsm.
 -export([init/1]).
@@ -18,7 +20,9 @@
 -record(state, {
           problem,
           timeout,
-          solver
+          timeout_ref,
+          solver,
+          solver_pid
 }).
 
 %% API.
@@ -43,12 +47,15 @@ set_solver(Solver) ->
 run() ->
     gen_fsm:sync_send_event(?MODULE, run).
 
--spec stop() -> ok.
+-spec stop() -> {ok, State :: term()}.
 stop() ->
-    gen_fsm:send_event(?MODULE, stop).
+    gen_fsm:sync_send_event(?MODULE, stop).
+
+-spec best() -> {ok, Best :: number()}.
+best() ->
+    gen_fsm:sync_send_event(?MODULE, best).
 
 %% gen_fsm.
-
 init([]) ->
     {ok, setup, #state{}}.
 
@@ -71,7 +78,7 @@ setup(_Event, StateData) ->
 setup(run, _From, StateData) ->
     try verify_setup(StateData) of
         ok -> 
-            {reply, ok, running, StateData}
+            {reply, ok, running, handle_run(StateData)}
     catch
         throw:Other ->
             {reply, {error, Other}, setup, StateData}
@@ -79,11 +86,15 @@ setup(run, _From, StateData) ->
 setup(_Event, _From, StateData) ->
     {reply, ignored, setup, StateData}.
 
-running(stop, StateData) ->
-    {next_state, setup, StateData};
 running(_Event, StateData) ->
     {next_state, running, StateData}.
 
+running(stop, _From, StateData) ->
+    {ok, Result, StateData1} = handle_stop(StateData),
+    {reply, {ok, Result}, setup, StateData1};
+running(best, _From, StateData) ->
+    {ok, Best} = handle_best(StateData),
+    {reply, {ok, Best}, running, StateData};
 running(_Event, _From, StateData) ->
     {reply, ignored, running, StateData}.
 
@@ -122,3 +133,59 @@ validate_solver(undefined) ->
     throw(undefined_solver);
 validate_solver(_) ->
     ok.
+
+%% runner
+handle_run(State = #state{
+               timeout=Timeout,
+               problem=Problem,
+               solver=Solver
+              }) ->
+    {ok, State0} = Solver:init(Problem),
+    SolverPid = spawn_link(?MODULE, looper, [self(), Solver, State0]),
+    TimerRef = erlang:send_after(
+                 Timeout,
+                 SolverPid,
+                 {self(), stop}
+    ),
+    State#state{timeout_ref=TimerRef, solver_pid=SolverPid}.
+
+handle_stop(State = #state{solver_pid=Pid, timeout_ref=Timer}) ->
+    Pid ! {self(), stop},
+    erlang:cancel_timer(Timer),
+    receive
+        {ok, Pid, SolverState} ->
+            {
+                ok,
+                SolverState,
+                State#state{solver_pid=undefined,timeout_ref=undefined}
+            }
+    after
+        10000 ->
+            exit(stop_failed)
+    end.
+
+handle_best(#state{solver_pid=Pid}) ->
+    Pid ! {self(), best},
+    receive
+        {ok, Pid, Best} ->
+            {ok, Best}
+    after
+        10000 ->
+            exit(best_failed)
+    end.
+
+looper(Runner, Solver, State) ->
+    receive
+        {Runner, best} ->
+            {ok, Best} = Solver:best(State),
+            Runner ! {ok, self(), Best},
+            looper(Runner, Solver, State);
+        {Runner, stop} ->
+            Runner ! {ok, self(), State};
+        _ ->
+            looper(Runner, Solver, State)
+    after
+        0 -> 
+            {ok, State1} = Solver:iterate(State),
+            looper(Runner, Solver, State1)
+    end.

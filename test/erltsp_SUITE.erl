@@ -101,21 +101,23 @@ tsp_runner_states(Config) ->
     {error, negative_or_zero_timeout} = tsp_runner:run(),
     ok = tsp_runner:set_timeout(60000),
     {error, undefined_solver} = tsp_runner:run(),
-    ok = tsp_runner:set_solver(valid_solver),
+    ok = tsp_runner:set_solver(tsp_solver_evo_single),
     ok = tsp_runner:run(),
-    ok = tsp_runner:stop().
+    {ok, {Len0, _Sol0}} = tsp_runner:best(),
+    ok = timer:sleep(2000),
+    {ok, {Len1, _Sol1}} = tsp_runner:best(),
+    true = Len0 > Len1,
+    {ok, State} = tsp_runner:stop(),
+    State.
 
 % TSP SOLVER EVO SINGLE
 tsp_solver_evo_single_init(Config) ->
     Problem = get_problem(Config),
-
-    State = tsp_solver_evo_single:init(Problem),
-    ct:pal("State: ~n~p~n", [State]),
-    ok.
+    tsp_solver_evo_single:init(Problem).
 
 tsp_solver_evo_single_iterate(Config) ->
     Problem = get_problem(Config),
-    State = tsp_solver_evo_single:init(Problem),
+    {ok, State} = tsp_solver_evo_single:init(Problem),
     State1 = tsp_solver_evo_single_iterate_(State, 1000),
     Threshold = tsp_problem:threshold(Problem),
     ct:pal("Threshold was ~p~n", [Threshold]),
@@ -124,34 +126,24 @@ tsp_solver_evo_single_iterate(Config) ->
 tsp_solver_evo_single_iterate_hard(Config) ->
     File = data_dir(Config) ++ "n30_ts225.4.tspp",
     Problem = tsp_problem:from_file(File),
-    State = tsp_solver_evo_single:init(Problem),
+    {ok, State} = tsp_solver_evo_single:init(Problem),
 
     State1 = tsp_solver_evo_single_iterate_(State, 1000),
-    Best1 = tsp_solver_evo_single:best(State1),
-    ct:pal("~p:~p~n", [1000, Best1]),
-
     State2 = tsp_solver_evo_single_iterate_(State1, 1000),
-    Best2 = tsp_solver_evo_single:best(State2),
-    ct:pal("~p:~p~n", [2000, Best2]),
-
     State3 = tsp_solver_evo_single_iterate_(State2, 1000),
-    Best3 = tsp_solver_evo_single:best(State3),
-    ct:pal("~p:~p~n", [3000, Best3]),
-
-
-    Threshold = tsp_problem:threshold(Problem),
-    ct:pal("Threshold was ~p~n", [Threshold]),
+    State4 = tsp_solver_evo_single_iterate_(State3, 2000),
+    State5 = tsp_solver_evo_single_iterate_(State4, 5000),
+    State6 = tsp_solver_evo_single_iterate_(State5, 5000),
+    State7 = tsp_solver_evo_single_iterate_(State6, 10000),
     ok.
 
 
-tsp_solver_evo_single_iterate_(State, ToIterate) ->
-    tsp_solver_evo_single_iterate_(State, ToIterate, 0).
-
-tsp_solver_evo_single_iterate_(State, 0, _) ->
+tsp_solver_evo_single_iterate_(State, 0) ->
+    ct:pal("~p~n", [tsp_solver_evo_single:best(State)]),
     State;
-tsp_solver_evo_single_iterate_(State, ToIterate, Iteration) ->
-    State1 = tsp_solver_evo_single:evolve(State),
-    tsp_solver_evo_single_iterate_(State1, ToIterate-1, Iteration+1).
+tsp_solver_evo_single_iterate_(State, ToIterate) ->
+    {ok, State1} = tsp_solver_evo_single:iterate(State),
+    tsp_solver_evo_single_iterate_(State1, ToIterate-1).
 
 % helpers
 data_dir(Config) ->

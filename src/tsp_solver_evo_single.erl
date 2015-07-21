@@ -1,9 +1,12 @@
 -module(tsp_solver_evo_single).
 
--export([init/1, evolve/1, best/1]).
+-export([init/1, iterate/1, best/1]).
+
+-behaviour(tsp_solver).
 
 -record(state, {
     problem,
+    best,
     population
 }).
 
@@ -11,25 +14,31 @@
 -define(NB_SIZE, 10).
 -define(MUTATION_CHANCE, 0.10).
 
+% API
 init(Problem) ->
     ok = setup_randomness(),
     Population = init_population(Problem),
-    #state{problem = Problem, population=Population}.
+    Best = get_best(Population),
+    {
+        ok,
+        #state{problem = Problem, population=Population, best=Best}
+    }.
 
-evolve(State = #state{population=Population}) ->
+iterate(State = #state{population=Population}) ->
     {ok, Selection} = selection(Population),
     {ok, Recombination} = recombination(Selection),
     {ok, Mutation} = mutation(Recombination),
-    update_state(State, Mutation).
+    {ok, update_state(State, Mutation)}.
 
 best(#state{population=Population}) ->
-    gb_trees:smallest(Population).
+    {ok, gb_trees:smallest(Population)}.
 
 % update
 update_state(State = #state{problem = Problem, population=Population}, Mutation) ->
     {ok, Length} = tsp_problem:solution(Problem, Mutation),
     NewPopulation = maybe_update_population(Population, {Length, Mutation}),
-    State#state{population=NewPopulation}.
+    NewBest = get_best(Population),
+    State#state{population=NewPopulation, best=NewBest}.
 
 maybe_update_population(Population, NewSolution) ->
     try validate_update(Population, NewSolution) of
@@ -195,6 +204,9 @@ init_population(Problem, ToGenerate, Tree) ->
         _ ->
             init_population(Problem, ToGenerate, Tree)
     end.
+
+get_best(Population) ->
+    gb_trees:smallest(Population).
 
 gen_solution(Nodes) ->
     randomize_list(Nodes).
