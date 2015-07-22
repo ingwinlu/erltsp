@@ -30,8 +30,8 @@ iterate(State = #state{population=Population}) ->
     {ok, Mutation} = mutation(Recombination),
     {ok, update_state(State, Mutation)}.
 
-best(#state{population=Population}) ->
-    {ok, gb_trees:smallest(Population)}.
+best(#state{best=Best}) ->
+    {ok, Best}.
 
 % update
 update_state(State = #state{problem = Problem, population=Population}, Mutation) ->
