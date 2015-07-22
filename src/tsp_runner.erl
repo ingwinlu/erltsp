@@ -4,7 +4,7 @@
 %% API.
 -export([start_link/0]).
 -export([run/2, stop/0]).
--export([looper/4]).
+-export([looper/1]).
 
 
 %% gen_fsm.
@@ -18,11 +18,15 @@
 -export([code_change/4]).
 
 -record(state, {
-          solver_pid
+          solver_pid,
+          log_interval_ref
 }).
 
-%% API.
+-define(LOG_INTERVAL, 10000).
+-define(LOOPER_STOP_MSG, stop).
+-define(LOOPER_LOG_MSG, log).
 
+%% API.
 -spec start_link() -> {ok, pid()}.
 start_link() ->
     gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -49,9 +53,12 @@ idle(_Event, StateData) ->
     {next_state, idle, StateData}.
 
 idle({run, Problem, Solver}, _From, StateData) ->
+    ok = tsp_event_logger:add_handler(),
     {ok, Pid} = handle_run(Problem, Solver),
+    {ok, TimerRef} = timer:send_interval(?LOG_INTERVAL, Pid, ?LOOPER_LOG_MSG),
     StateData1 = StateData#state{
-                   solver_pid=Pid
+                   solver_pid=Pid,
+                   log_interval_ref=TimerRef
     },
     {reply, ok, running, StateData1};
 idle(_Event, _From, StateData) ->
@@ -60,8 +67,10 @@ idle(_Event, _From, StateData) ->
 running(_Event, StateData) ->
     {next_state, running, StateData}.
 
-running(stop, _From, #state{solver_pid=Pid}) ->
+running(stop, _From, #state{solver_pid=Pid, log_interval_ref=TRef}) ->
     {ok, SolverState, Iterations} = handle_stop(Pid),
+    {ok, cancel} = timer:cancel(TRef),
+    ok = tsp_event_logger:delete_handler(),
     {reply, {ok, SolverState, Iterations}, idle, #state{}};
 running(_Event, _From, StateData) ->
     {reply, ignored, running, StateData}.
@@ -76,13 +85,27 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
     {ok, StateName, StateData}.
 
 %% runner
+-record(runner, {
+          tsp_runner_pid,
+          solver,
+          solver_state,
+          iteration = 0,
+          start_time = erlang:system_time()
+}).
+
 handle_run(Problem, Solver) ->
     {ok, State0} = Solver:init(Problem),
-    SolverPid = spawn_link(?MODULE, looper, [self(), Solver, State0, 0]),
+    RunnerState = #runner{
+                     tsp_runner_pid = self(),
+                     solver = Solver,
+                     solver_state = State0
+    },
+    ok = handle_log(init, RunnerState),
+    SolverPid = spawn_link(?MODULE, looper, [RunnerState]),
     {ok, SolverPid}.
 
 handle_stop(Pid) ->
-    Pid ! {self(), stop},
+    Pid ! ?LOOPER_STOP_MSG,
     receive
         {Pid, stopped, SolverState, Iteration} ->
             {ok, SolverState, Iteration}
@@ -91,14 +114,16 @@ handle_stop(Pid) ->
             exit(handle_stop_failed)
     end.
 
-looper(Runner, Solver, State, Iteration) ->
-    Msg = looper_get_message(Runner),
-    looper_handle_message(Msg, Runner, Solver, State, Iteration).
+looper(#runner{} = RunnerState) ->
+    Msg = looper_get_message(),
+    looper_handle_message(Msg, RunnerState).
 
-looper_get_message(Runner) ->
+looper_get_message() ->
     receive
-        {Runner, stop} ->
+        ?LOOPER_STOP_MSG ->
             stop;
+        ?LOOPER_LOG_MSG ->
+            log;
         _ ->
             ok
     after
@@ -106,16 +131,33 @@ looper_get_message(Runner) ->
             ok
     end.
 
-looper_handle_message(stop, Runner, _Solver, State, Iteration) ->
+looper_handle_message(
+        stop,
+        RunnerState = #runner{tsp_runner_pid=Runner,
+                              solver_state=State,
+                              iteration=Iteration}) ->
+    ok = handle_log(stop, RunnerState),
     Runner ! {self(), stopped, State, Iteration},
     ok;
-looper_handle_message(ok, Runner, Solver, State, Iteration) ->
-    looper_handle_iteration(
-        Solver:iterate(State),
-        Runner,
-        Solver,
-        Iteration
-    ).
+looper_handle_message(log, #runner{} = RunnerState) ->
+    ok = handle_log(timer, RunnerState),
+    looper_handle_message(ok, RunnerState);
+looper_handle_message(
+        ok,
+        RunnerState = #runner{solver=Solver,
+                              solver_state=State}) ->
+    looper_handle_iteration(Solver:iterate(State), RunnerState).
 
-looper_handle_iteration({ok, NewState}, Runner, Solver, Iteration) ->
-    looper(Runner, Solver, NewState, Iteration+1).
+looper_handle_iteration({ok, NewState}, RunnerState = #runner{}) ->
+    Iteration1 = RunnerState#runner.iteration + 1,
+    looper(RunnerState#runner{solver_state=NewState, iteration=Iteration1}).
+
+handle_log(
+        Mark,
+        #runner{solver=Solver,
+                solver_state=SolverState,
+                iteration=Iteration,
+                start_time=StartTime}) ->
+    Runtime = erlang:system_time() - StartTime,
+    {ok, {Length, Solution}} = Solver:best(SolverState),
+    tsp_event:mark(Runtime, Iteration, Length, Solution, Mark).

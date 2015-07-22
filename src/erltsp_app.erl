@@ -5,13 +5,7 @@
 -export([stop/1]).
 
 start(_Type, _Args) ->
-	case erltsp_sup:start_link() of
-        {ok, Pid} ->
-            tsp_event_logger:add_handler(),
-            {ok, Pid};
-        Other ->
-            {error, Other}
-    end.
+	erltsp_sup:start_link().
 
 stop(_State) ->
 	ok.

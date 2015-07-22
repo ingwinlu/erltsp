@@ -94,7 +94,7 @@ tsp_runner_run(Config) ->
     Problem = get_problem(Config),
     ignored = tsp_runner:stop(),
     ok = tsp_runner:run(Problem, tsp_solver_evo_single),
-    ok = timer:sleep(1000),
+    ok = timer:sleep(10000),
     {ok, SolverState, Iterations} = tsp_runner:stop(),
     ok.
 

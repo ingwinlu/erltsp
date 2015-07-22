@@ -1,7 +1,7 @@
 -module(tsp_event).
 
 -export([start_link/0, add_handler/2, delete_handler/2]).
--export([load_problem/1]).
+-export([mark/5]).
 
 % gen_event
 start_link() ->
@@ -14,5 +14,8 @@ delete_handler(Handler, Args) ->
     gen_event:delete_handler(?MODULE, Handler, Args).
 
 % api
-load_problem(Problem) ->
-    gen_event:notify(?MODULE, {load, Problem}).
+mark(Runtime, Iteration, Length, Solution, Mark) ->
+    gen_event:notify(
+        ?MODULE,
+        {mark, Runtime, Iteration, Length, Solution, Mark}
+     ).

@@ -63,7 +63,6 @@ from_file(File) ->
         edgedict => EdgeDict,
         precedences => PrecedenceList
     },
-    tsp_event:load_problem(Problem),
     Problem.
 
 -spec solution(Problem :: tsp_problem(), Solution :: [non_neg_integer()]) ->
