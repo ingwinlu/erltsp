@@ -18,7 +18,7 @@ groups() -> [
         ]
     },{
         tsp_runner, [], [
-            tsp_runner_states
+            tsp_runner_run
         ]
     },{
         tsp_solver_evo_single, [], [
@@ -90,19 +90,13 @@ check_solutions(Config) ->
     {ok, TrivialLength} = tsp_problem:solution(Problem, TrivialSolutionRev).
 
 % TSP RUNNER
-tsp_runner_states(Config) ->
-    {error, undefined_problem} = tsp_runner:run(),
+tsp_runner_run(Config) ->
     Problem = get_problem(Config),
-    ok = tsp_runner:set_problem(Problem),
-    {error, undefined_solver} = tsp_runner:run(),
-    ok = tsp_runner:set_solver(tsp_solver_evo_single),
-    ok = tsp_runner:run(),
-    {ok, {Len0, _Sol0}} = tsp_runner:best(),
-    ok = timer:sleep(2000),
-    {ok, {Len1, _Sol1}} = tsp_runner:best(),
-    true = Len0 > Len1,
-    {ok, State} = tsp_runner:stop(),
-    State.
+    ignored = tsp_runner:stop(),
+    ok = tsp_runner:run(Problem, tsp_solver_evo_single),
+    ok = timer:sleep(1000),
+    {ok, SolverState, Iterations} = tsp_runner:stop(),
+    ok.
 
 % TSP SOLVER EVO SINGLE
 tsp_solver_evo_single_init(Config) ->

@@ -6,7 +6,6 @@
 
 -record(state, {
     problem,
-    best,
     population
 }).
 
@@ -18,10 +17,9 @@
 init(Problem) ->
     ok = setup_randomness(),
     Population = init_population(Problem),
-    Best = get_best(Population),
     {
         ok,
-        #state{problem = Problem, population=Population, best=Best}
+        #state{problem = Problem, population=Population}
     }.
 
 iterate(State = #state{population=Population}) ->
@@ -30,15 +28,14 @@ iterate(State = #state{population=Population}) ->
     {ok, Mutation} = mutation(Recombination),
     {ok, update_state(State, Mutation)}.
 
-best(#state{best=Best}) ->
-    {ok, Best}.
+best(#state{population=Population}) ->
+    {ok, get_best(Population)}.
 
 % update
 update_state(State = #state{problem = Problem, population=Population}, Mutation) ->
     {ok, Length} = tsp_problem:solution(Problem, Mutation),
     NewPopulation = maybe_update_population(Population, {Length, Mutation}),
-    NewBest = get_best(Population),
-    State#state{population=NewPopulation, best=NewBest}.
+    State#state{population=NewPopulation}.
 
 maybe_update_population(Population, NewSolution) ->
     try validate_update(Population, NewSolution) of

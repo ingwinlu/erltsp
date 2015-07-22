@@ -12,20 +12,12 @@ An Example:
 ```
 (erltsp@127.0.0.1)1> Problem = erltsp:load_problem("/home/winlu/gitrepos/erltsp/test/erltsp_SUITE_data/n30_ts225.4.tspp").
 <snip>
-(erltsp@127.0.0.1)2> erltsp:set_problem(Problem).
-ok
-(erltsp@127.0.0.1)3> erltsp:all_solvers().
+(erltsp@127.0.0.1)2> erltsp:all_solvers().
 [tsp_solver_evo_single]
-(erltsp@127.0.0.1)4> erltsp:set_solver(tsp_solver_evo_single).
+(erltsp@127.0.0.1)3> erltsp:solver_run(Problem, tsp_solver_evo_single).
 ok
-(erltsp@127.0.0.1)5> erltsp:solver_run().
-ok
-(erltsp@127.0.0.1)6> erltsp:solver_best().
-{ok,{62681.88506523915,
-     [30,12,9,22,4,14,2,5,15,3,10,27,28,13,18,26,29,21,17,16,7,1,
-           6,24,23|...]}}
-(erltsp@127.0.0.1)7> erltsp:solver_stop().
-{ok, {state, <snip>}}
+(erltsp@127.0.0.1)4> {ok, State, Iterations} = erltsp:solver_stop().
+<snip>
 ```
 
 ## Solvers
