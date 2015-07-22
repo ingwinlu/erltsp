@@ -151,17 +151,26 @@ handle_best(#state{solver_pid=Pid}) ->
     end.
 
 looper(Runner, Solver, State) ->
+    case looper_handle_message(Runner, Solver, State) of
+        ok ->
+            {ok, State1} = Solver:iterate(State),
+            looper(Runner, Solver, State1);
+        stop ->
+            stop
+    end.
+
+looper_handle_message(Runner, Solver, State) ->
     receive
         {Runner, best} ->
             {ok, Best} = Solver:best(State),
             Runner ! {ok, self(), Best},
-            looper(Runner, Solver, State);
+            ok;
         {Runner, stop} ->
-            Runner ! {ok, self(), State};
+            Runner ! {ok, self(), State},
+            stop;
         _ ->
-            looper(Runner, Solver, State)
+            ok
     after
-        0 -> 
-            {ok, State1} = Solver:iterate(State),
-            looper(Runner, Solver, State1)
+        0 ->
+            ok
     end.
