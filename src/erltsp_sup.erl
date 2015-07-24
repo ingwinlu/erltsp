@@ -10,7 +10,7 @@ start_link() ->
 init([]) ->
     Procs = [
         tsp_event(),
-        tsp_runner()
+        erltsp_solver_sup()
     ],
     {ok, {sup_flags(), Procs}}.
 
@@ -36,17 +36,17 @@ tsp_event() ->
         modules => [tsp_event]
     }.
 
-tsp_runner() ->
+erltsp_solver_sup() ->
     #{
-        id => tsp_runner,
+        id => erltsp_solver_sup,
         start => {
-                    tsp_runner,
+                    erltsp_solver_sup,
                     start_link,
                     []
-                 },
+        },
         restart => permanent,
-        shutdown => 5000,
-        type => worker,
-        modules => [tsp_runner]
-    }.
+        shutdown => infinity,
+        type => supervisor,
+        modules => [erltsp_solver_sup]
 
+    }.

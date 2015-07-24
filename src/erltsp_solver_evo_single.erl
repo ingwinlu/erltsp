@@ -1,8 +1,9 @@
--module(tsp_solver_evo_single).
+-module(erltsp_solver_evo_single).
 
+-export([start_link/1, stop/1]).
 -export([init/1, iterate/1, best/1]).
 
--behaviour(tsp_solver).
+-behaviour(erltsp_solver).
 
 -record(state, {
     problem,
@@ -14,6 +15,13 @@
 -define(MUTATION_CHANCE, 0.10).
 
 % API
+start_link(Problem) ->
+    erltsp_solver:start_link(Problem, ?MODULE).
+
+stop(Pid) ->
+    erltsp_solver:stop(Pid).
+
+% Callbacks
 init(Problem) ->
     ok = setup_randomness(),
     Population = init_population(Problem),
@@ -179,9 +187,9 @@ concat_mutation(H, T, A, B) ->
 
 % setup, helpers
 setup_randomness() ->
-    application:ensure_all_started(crypto),
+    {ok, _StartedApps} = application:ensure_all_started(crypto),
     <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
-    random:seed({A, B, C}),
+    _OldSeed = random:seed({A, B, C}),
     ok.
 
 init_population(Problem) ->

@@ -17,22 +17,27 @@ groups() -> [
             check_solutions
         ]
     },{
-        tsp_runner, [], [
-            tsp_runner_run
+        erltsp_solver_sup, [], [
+            erltsp_solver_sup_run_evo_single
         ]
     },{
-        tsp_solver_evo_single, [], [
-            tsp_solver_evo_single_init,
-            tsp_solver_evo_single_iterate,
-            tsp_solver_evo_single_iterate_hard
+        erltsp_solver_evo_single, [], [
+            erltsp_solver_evo_single_init,
+            erltsp_solver_evo_single_iterate,
+            erltsp_solver_evo_single_iterate_hard
+        ]
+    },{
+        erltsp_api, [], [
+            erltsp_api_test
         ]
     }
 ].
 
 all() -> [
     {group, tsp_problem},
-    {group, tsp_runner},
-    {group, tsp_solver_evo_single}
+    {group, erltsp_solver_sup},
+    {group, erltsp_solver_evo_single},
+    {group, erltsp_api}
 ].
 
 init_per_testcase(_, Config) ->
@@ -89,49 +94,59 @@ check_solutions(Config) ->
     TrivialSolutionRev = lists:reverse(TrivialSolution),
     {ok, TrivialLength} = tsp_problem:solution(Problem, TrivialSolutionRev).
 
-% TSP RUNNER
-tsp_runner_run(Config) ->
+% ERLTSP Solver sup and Solver
+erltsp_solver_sup_run_evo_single(Config) ->
     Problem = get_problem(Config),
-    ignored = tsp_runner:stop(),
-    ok = tsp_runner:run(Problem, tsp_solver_evo_single),
+    {ok, SolverPid} = erltsp_solver_sup:run(
+                        Problem,
+                        erltsp_solver_evo_single
+    ),
     ok = timer:sleep(10000),
-    {ok, SolverState, Iterations} = tsp_runner:stop(),
+    ok = erltsp_solver_sup:stop(SolverPid),
     ok.
 
 % TSP SOLVER EVO SINGLE
-tsp_solver_evo_single_init(Config) ->
+erltsp_solver_evo_single_init(Config) ->
     Problem = get_problem(Config),
-    tsp_solver_evo_single:init(Problem).
+    erltsp_solver_evo_single:init(Problem).
 
-tsp_solver_evo_single_iterate(Config) ->
+erltsp_solver_evo_single_iterate(Config) ->
     Problem = get_problem(Config),
-    {ok, State} = tsp_solver_evo_single:init(Problem),
-    State1 = tsp_solver_evo_single_iterate_(State, 1000),
+    {ok, State} = erltsp_solver_evo_single:init(Problem),
+    State1 = erltsp_solver_evo_single_iterate_(State, 1000),
     Threshold = tsp_problem:threshold(Problem),
     ct:pal("Threshold was ~p~n", [Threshold]),
     ok.
 
-tsp_solver_evo_single_iterate_hard(Config) ->
+erltsp_solver_evo_single_iterate_hard(Config) ->
     File = data_dir(Config) ++ "n30_ts225.4.tspp",
     Problem = tsp_problem:from_file(File),
-    {ok, State} = tsp_solver_evo_single:init(Problem),
+    {ok, State} = erltsp_solver_evo_single:init(Problem),
 
-    State1 = tsp_solver_evo_single_iterate_(State, 1000),
-    State2 = tsp_solver_evo_single_iterate_(State1, 1000),
-    State3 = tsp_solver_evo_single_iterate_(State2, 1000),
-    State4 = tsp_solver_evo_single_iterate_(State3, 2000),
-    State5 = tsp_solver_evo_single_iterate_(State4, 5000),
-    State6 = tsp_solver_evo_single_iterate_(State5, 5000),
-    State7 = tsp_solver_evo_single_iterate_(State6, 10000),
+    State1 = erltsp_solver_evo_single_iterate_(State, 1000),
+    State2 = erltsp_solver_evo_single_iterate_(State1, 1000),
+    State3 = erltsp_solver_evo_single_iterate_(State2, 1000),
+    State4 = erltsp_solver_evo_single_iterate_(State3, 2000),
+    State5 = erltsp_solver_evo_single_iterate_(State4, 5000),
+    State6 = erltsp_solver_evo_single_iterate_(State5, 5000),
+    State7 = erltsp_solver_evo_single_iterate_(State6, 10000),
     ok.
 
-
-tsp_solver_evo_single_iterate_(State, 0) ->
-    ct:pal("~p~n", [tsp_solver_evo_single:best(State)]),
+erltsp_solver_evo_single_iterate_(State, 0) ->
+    ct:pal("~p~n", [erltsp_solver_evo_single:best(State)]),
     State;
-tsp_solver_evo_single_iterate_(State, ToIterate) ->
-    {ok, State1} = tsp_solver_evo_single:iterate(State),
-    tsp_solver_evo_single_iterate_(State1, ToIterate-1).
+erltsp_solver_evo_single_iterate_(State, ToIterate) ->
+    {ok, State1} = erltsp_solver_evo_single:iterate(State),
+    erltsp_solver_evo_single_iterate_(State1, ToIterate-1).
+
+%erltsp_bindings
+erltsp_api_test(Config) ->
+    Problem = get_problem(Config),
+    {ok, Pid} = erltsp:solver_run(Problem, erltsp_solver_evo_single),
+    timer:sleep(1000),
+    {ok, Best} = erltsp:solver_best(Pid),
+    ok = erltsp:solver_stop(Pid),
+    ok.
 
 % helpers
 data_dir(Config) ->
