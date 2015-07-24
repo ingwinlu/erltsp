@@ -1,8 +1,9 @@
--module(tsp_solver_bb_single).
+-module(erltsp_solver_bb_single).
 
+-export([start_link/1, stop/1]).
 -export([init/1, iterate/1, best/1]).
 
--behaviour(tsp_solver).
+-behaviour(erltsp_solver).
 
 -record(state, {
           problem,
@@ -17,6 +18,17 @@
           lower_bound
 }).
 
+% API
+-spec start_link(Problem :: tsp_problem:tsp_problem()) ->
+    {ok, Pid :: pid()}.
+start_link(Problem) ->
+    erltsp_solver:start_link(Problem, ?MODULE).
+
+-spec stop(Pid :: pid()) -> ok.
+stop(Pid) ->
+    erltsp_solver:stop(Pid).
+
+% Callbacks
 -spec init(Problem :: tsp_problem:tsp_problem()) -> {ok, State0 :: term()}.
 init(Problem) ->
     Dimension = tsp_problem:dimension(Problem),
