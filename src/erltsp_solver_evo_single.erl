@@ -15,9 +15,12 @@
 -define(MUTATION_CHANCE, 0.10).
 
 % API
+-spec start_link(Problem :: tsp_problem:tsp_problem()) ->
+    {ok, Pid :: pid()}.
 start_link(Problem) ->
     erltsp_solver:start_link(Problem, ?MODULE).
 
+-spec stop(Pid :: pid()) -> ok.
 stop(Pid) ->
     erltsp_solver:stop(Pid).
 
