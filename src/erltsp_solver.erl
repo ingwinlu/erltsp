@@ -1,6 +1,6 @@
 -module(erltsp_solver).
 
--export([start_link/2, stop/1, best/1, best/2, init/3]).
+-export([start_link/2, stop/1, best/1, init/3]).
 -export([system_continue/3, system_terminate/4, system_code_change/4]).
 
 %callbacks
@@ -32,15 +32,12 @@ stop(Pid) ->
     proc_lib:stop(Pid).
 
 best(Target) ->
-    best(Target, ?SYNC_TIMEOUT).
-
-best(Target, Timeout) ->
     Target ! {best, self()},
     receive
         {best, Target, Result} ->
             Result
     after
-        Timeout ->
+        ?SYNC_TIMEOUT ->
             {error, {timeout, best, Target}}
     end.
 
