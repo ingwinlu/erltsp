@@ -1,4 +1,4 @@
--module(tsp_problem).
+-module(erltsp_problem).
 
 -export([from_file/1, solution/2]).
 -export([file/1,
@@ -8,34 +8,34 @@
          edgedict/1,
          precedences/1
         ]).
--export_type([tsp_problem/0]).
+-export_type([problem/0]).
 
 % TYPES
--type tsp_problem() :: #{
+-type problem() :: #{
         file => Filename :: file:name_all(),
         dimension => Dimension :: non_neg_integer(),
         threshold => Threshold :: number(),
-        nodedict => NodeDict :: tsp_nodedict(),
-        edgedict => EdgeDict :: tsp_edgedict(),
+        nodedict => NodeDict :: nodedict(),
+        edgedict => EdgeDict :: edgedict(),
         precedences => Precedences :: [precedence()]
        }.
 
--type tsp_nodedict() :: dict:dict(
+-type nodedict() :: dict:dict(
                           Id :: non_neg_integer(),
-                          Tsp_Node :: tsp_node()).
+                          Tsp_Node :: vertex()).
 
--type tsp_node() :: #{
+-type vertex() :: #{
         id => Id :: non_neg_integer(),
         x => X_Coordinate :: integer(),
         y => Y_Coordinate :: integer()
        }.
 
--type tsp_edgedict() :: dict:dict(
+-type edgedict() :: dict:dict(
         {non_neg_integer(), non_neg_integer()},
-        tsp_edge()
+        edge()
     ).
 
--type tsp_edge() :: #{
+-type edge() :: #{
         from => non_neg_integer(),
         to => non_neg_integer(),
         distance => float()
@@ -45,7 +45,7 @@
                        Second :: non_neg_integer()}.
 
 % API
--spec from_file(File :: file:name_all()) -> Problem :: tsp_problem().
+-spec from_file(File :: file:name_all()) -> Problem :: problem().
 from_file(File) ->
     {ok, IODev} = file:open(File, [read, read_ahead]),
     {ok, Dimension} = parse_dimension(IODev),
@@ -65,7 +65,7 @@ from_file(File) ->
     },
     Problem.
 
--spec solution(Problem :: tsp_problem(), Solution :: [non_neg_integer()]) ->
+-spec solution(Problem :: problem(), Solution :: [non_neg_integer()]) ->
     {ok, Value :: float()} |
     {error, invalid_solution}.
 solution(Problem, Solution) ->

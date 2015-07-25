@@ -15,7 +15,7 @@
 -define(MUTATION_CHANCE, 0.10).
 
 % API
--spec start_link(Problem :: tsp_problem:tsp_problem()) ->
+-spec start_link(Problem :: erltsp_problem:problem()) ->
     {ok, Pid :: pid()}.
 start_link(Problem) ->
     erltsp_solver:start_link(Problem, ?MODULE).
@@ -44,7 +44,7 @@ best(#state{population=Population}) ->
 
 % update
 update_state(State = #state{problem = Problem, population=Population}, Mutation) ->
-    {ok, Length} = tsp_problem:solution(Problem, Mutation),
+    {ok, Length} = erltsp_problem:solution(Problem, Mutation),
     NewPopulation = maybe_update_population(Population, {Length, Mutation}),
     State#state{population=NewPopulation}.
 
@@ -201,10 +201,10 @@ init_population(Problem) ->
 init_population(_Problem, 0, Tree) ->
     Tree;
 init_population(Problem, ToGenerate, Tree) ->
-    NodeDict = tsp_problem:nodedict(Problem),
+    NodeDict = erltsp_problem:nodedict(Problem),
     Nodes = dict:fetch_keys(NodeDict),
     Solution = gen_solution(Nodes),
-    {ok, Length} = tsp_problem:solution(Problem, Solution),
+    {ok, Length} = erltsp_problem:solution(Problem, Solution),
     case gb_trees:lookup(Length, Tree) of
         none -> 
             NewTree = gb_trees:insert(Length, Solution, Tree),

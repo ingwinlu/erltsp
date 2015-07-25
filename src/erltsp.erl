@@ -17,10 +17,10 @@ stop() ->
 all_solvers() ->
     [tsp_solver_evo_single].
 
--spec load_problem(File :: file:name_all()) -> Problem :: tsp_problem:tsp_problem().
-load_problem(File) -> tsp_problem:from_file(File).
+-spec load_problem(File :: file:name_all()) -> Problem :: erltsp_problem:problem().
+load_problem(File) -> erltsp_problem:from_file(File).
 
--spec solver_run(Problem :: tsp_problem:tsp_problem(),
+-spec solver_run(Problem :: erltsp_problem:problem(),
                  Solver :: atom()) ->
     {ok, Pid :: pid()}.
 solver_run(Problem, Solver) -> erltsp_solver_sup:run(Problem, Solver).

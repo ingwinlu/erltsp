@@ -4,7 +4,7 @@
 -export([system_continue/3, system_terminate/4, system_code_change/4]).
 
 %callbacks
--callback init(Problem :: tsp_problem:tsp_problem()) -> {ok, State0 :: term()}.
+-callback init(Problem :: erltsp_problem:problem()) -> {ok, State0 :: term()}.
 -callback iterate(State0 :: term()) -> {ok, State1 :: term()}.
 -callback best(State :: term()) -> {ok, Best :: term()}.
 
@@ -21,7 +21,7 @@
 -define(SYNC_TIMEOUT, 5000).
 
 % api
--spec start_link(Problem :: tsp_problem:tsp_problem(),
+-spec start_link(Problem :: erltsp_problem:problem(),
                  Solver :: module()) ->
     {ok, Pid :: pid()}.
 start_link(Problem, Solver) ->

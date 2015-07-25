@@ -12,7 +12,7 @@
 start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec run(Problem :: tsp_problem:tsp_problem(), Solver :: atom()) ->
+-spec run(Problem :: erltsp_problem:problem(), Solver :: atom()) ->
     {ok, Pid ::pid()}.
 run(Problem, Solver) ->
     supervisor:start_child(?MODULE, [Problem, Solver]).
