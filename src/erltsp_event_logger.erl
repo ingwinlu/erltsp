@@ -1,4 +1,4 @@
--module(tsp_event_logger).
+-module(erltsp_event_logger).
 
 -behaviour(gen_event).
 
@@ -18,10 +18,10 @@ add_handler() ->
     add_handler(Filename).
 
 add_handler(Filename) ->
-    tsp_event:add_handler(?MODULE, [Filename]).
+    erltsp_event:add_handler(?MODULE, [Filename]).
 
 delete_handler() ->
-    tsp_event:delete_handler(?MODULE, []).
+    erltsp_event:delete_handler(?MODULE, []).
 
 
 %% Callbacks

@@ -1,4 +1,4 @@
--module(tsp_event).
+-module(erltsp_event).
 
 -export([start_link/0, add_handler/2, delete_handler/2]).
 -export([mark/5]).

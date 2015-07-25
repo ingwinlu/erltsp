@@ -49,7 +49,7 @@ init(Parent, Problem, Solver) ->
     StartTime = erlang:system_time(),
     LogFileName = erlang:integer_to_list(StartTime) ++
         "_" ++ erlang:atom_to_list(Solver),
-    ok = tsp_event_logger:add_handler(LogFileName),
+    ok = erltsp_event_logger:add_handler(LogFileName),
 
     {ok, SolverState0} = Solver:init(Problem),
 
@@ -134,5 +134,5 @@ handle_log(
                , iteration = Iteration}) ->
     Runtime = erlang:system_time() - StartTime,
     {ok, {Length, Solution}} = Solver:best(SolverState),
-    ok = tsp_event:mark(Runtime, Iteration, Length, Solution, Mark),
+    ok = erltsp_event:mark(Runtime, Iteration, Length, Solution, Mark),
     ok.
