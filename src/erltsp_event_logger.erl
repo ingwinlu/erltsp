@@ -55,8 +55,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 % helper
 log_file(Filename) ->
-    {ok, [[HomeDir]]} = init:get_argument(home),
-    HomeDir ++ "/" ++ Filename ++ ".csv".
+    %{ok, [[HomeDir]]} = init:get_argument(home),
+    %HomeDir ++ "/" ++ Filename ++ ".csv".
+    Filename ++ ".cxv".
 
 write_header(IoDevice) ->
     Header = "Timestamp,Iteration,Length,Solution,Mark" ++ line_break(),
@@ -76,7 +77,7 @@ format({mark, Runtime, Iteration, Length, Solution, Mark}) ->
     ++ delimiter()
     ++ format_length(Length)
     ++ delimiter()
-    ++ format_Solution(Solution)
+    ++ format_solution(Solution)
     ++ delimiter()
     ++ format_mark(Mark)
     ++ line_break().
@@ -91,10 +92,14 @@ format_runtime(Runtime) ->
 format_iteration(Iteration) ->
     erlang:integer_to_list(Iteration).
 
+format_length(undefined) ->
+    "undefined";
 format_length(Length) ->
     erlang:float_to_list(Length).
 
-format_Solution(Solution) ->
+format_solution(undefined) ->
+    "undefined";
+format_solution(Solution) ->
     SolutionPrefixed = lists:flatten(
                          ["-" ++ erlang:integer_to_list(X)
                             || X <- Solution

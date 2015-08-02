@@ -92,13 +92,17 @@ handle_msg({system, From, Request}, Parent, State) ->
 handle_msg({'EXIT', Parent, Reason}, Parent, State) ->
     ok = handle_exit(State),
     exit(Reason);
-handle_msg(_Msg, Parent, State) ->
+handle_msg(Msg, Parent, State) ->
+    error_logger:info_msg("unexpected msg ~p in ~p, ignoring~n",
+                          [Msg, ?MODULE]
+    ),
     loop(Parent, State).
 
 system_continue(Parent, _, {state, State}) ->
     loop(Parent, State).
 
-system_terminate(Reason, _, _, _) ->
+system_terminate(Reason, _, _, {state, State}) ->
+    ok = handle_exit(State),
     exit(Reason).
 
 system_code_change(Misc, _, _ ,_) ->
@@ -121,6 +125,7 @@ handle_best(#state{solver = Solver,
 handle_exit(State = #state{timer_log_ref=TRef}) ->
     {ok, cancel} = timer:cancel(TRef),
     ok = handle_log(stop, State),
+    ok = erltsp_event_logger:delete_handler(),
     ok.
 
 handle_log(

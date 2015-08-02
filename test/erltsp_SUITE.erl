@@ -10,38 +10,23 @@ end_per_suite(_Config) ->
     ok.
 
 groups() -> [
-    {
-        erltsp_problem, [], [
+    {erltsp_problem, [], [
             parse_n10_a280_1,
             parse_all_problems,
             check_solutions
-        ]
-    },{
-        erltsp_solver_sup, [], [
-            erltsp_solver_sup_run_evo_single
-        ]
-    },{
-        erltsp_solver_evo_single, [], [
-            erltsp_solver_evo_single_init,
-            erltsp_solver_evo_single_iterate,
-            erltsp_solver_evo_single_iterate_hard
-        ]
-    },{
-        erltsp_solver_bb_single_simple, [], [
-           erltsp_solver_bb_single_simple_iterate
-        ]
-    },{
-        erltsp_api, [], [
+    ]},
+    {erltsp_solver, [], [
+            erltsp_solver_evo_single,
+            erltsp_solver_bb_single_simple
+    ]},
+    {erltsp_api, [], [
             erltsp_api_test
-        ]
-    }
+    ]}
 ].
 
 all() -> [
     {group, erltsp_problem},
-    {group, erltsp_solver_sup},
-    {group, erltsp_solver_evo_single},
-    {group, erltsp_solver_bb_single_simple},
+    {group, erltsp_solver},
     {group, erltsp_api}
 ].
 
@@ -91,7 +76,8 @@ parse_all_problems(Config) ->
     15 = length(AllProblems).
 
 check_solutions(Config) ->
-    Problem = get_problem(Config),
+    File = data_dir(Config) ++ "n10_a280.1.tspp",
+    Problem = erltsp_problem:from_file(File),
     {error, solution_incomplete} = erltsp_problem:solution(Problem, [1,2]),
     TrivialSolution = lists:seq(1,10),
     TrivialLength = 1291.454436262999,
@@ -99,41 +85,25 @@ check_solutions(Config) ->
     TrivialSolutionRev = lists:reverse(TrivialSolution),
     {ok, TrivialLength} = erltsp_problem:solution(Problem, TrivialSolutionRev).
 
-% ERLTSP Solver sup and Solver
-erltsp_solver_sup_run_evo_single(Config) ->
-    Problem = get_problem(Config),
+% ERLTSP Solver
+erltsp_solver_evo_single(Config) ->
+    Problem = get_hard_problem(Config),
+    ok = run_solver(Problem, erltsp_solver_evo_single),
+    ok.
+
+erltsp_solver_bb_single_simple(Config) ->
+    Problem = get_hard_problem(Config),
+    ok = run_solver(Problem, erltsp_solver_bb_single_simple),
+    ok.
+
+run_solver(Problem, Solver) ->
     {ok, SolverPid} = erltsp_solver_sup:run(
                         Problem,
-                        erltsp_solver_evo_single
+                        Solver
     ),
-    ok = timer:sleep(10000),
+    ok = timer:sleep(15000),
     ok = erltsp_solver_sup:stop(SolverPid),
     ok.
-
-% TSP SOLVER EVO SINGLE
-erltsp_solver_evo_single_init(Config) ->
-    Problem = get_problem(Config),
-    erltsp_solver_evo_single:init(Problem).
-
-erltsp_solver_evo_single_iterate(Config) ->
-    Problem = get_problem(Config),
-    {ok, State} = erltsp_solver_evo_single:init(Problem),
-    {ok, _State1} = erltsp_solver_evo_single:iterate(State),
-    ok.
-
-erltsp_solver_evo_single_iterate_hard(Config) ->
-    Solver = erltsp_solver_evo_single,
-    File = data_dir(Config) ++ "n30_ts225.4.tspp",
-    Problem = erltsp_problem:from_file(File),
-    stress_solver(Solver, Problem, 15000).
-
-
-% erltsp_solver_bb_single_simple
-erltsp_solver_bb_single_simple_iterate(Config) ->
-    Solver = erltsp_solver_bb_single_simple,
-    File = data_dir(Config) ++ "n30_ts225.4.tspp",
-    Problem = erltsp_problem:from_file(File),
-    stress_solver(Solver, Problem, 15000).
 
 %erltsp_bindings
 erltsp_api_test(Config) ->
@@ -150,27 +120,6 @@ data_dir(Config) ->
     {_, DataDir} = lists:keyfind(data_dir, 1, Config),
     DataDir.
 
-get_problem(Config) ->
-    File = data_dir(Config) ++ "n10_a280.1.tspp",
+get_hard_problem(Config) ->
+    File = data_dir(Config) ++ "n30_ts225.4.tspp",
     erltsp_problem:from_file(File).
-
-do_iterate(Solver, State, TRef) ->
-    receive
-        timeout -> {ok, State}
-    after 0 ->
-        handle_iterate(Solver:iterate(State), Solver, TRef)
-    end.
-
-handle_iterate({stop, State}, _, TRef) ->
-    timer:cancel(TRef),
-    ct:pal("stress solver finished early~n", []),
-    {ok, State};
-handle_iterate({ok, State}, Solver, TRef) ->
-    do_iterate(Solver, State, TRef).    
-
-stress_solver(Solver, Problem, TimeLimit) ->
-    {ok, TRef} = timer:send_after(TimeLimit, timeout),
-    {ok, State} = Solver:init(Problem),
-    {ok, State1} = do_iterate(Solver, State, TRef),
-    ct:pal("~p~n", [Solver:best(State1)]),
-    ok.

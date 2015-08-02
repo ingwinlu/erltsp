@@ -2,6 +2,7 @@
 
 -export([start_link/1, stop/1]).
 -export([init/1, iterate/1, best/1]).
+-export([stringify_bb/1]).
 
 -behaviour(erltsp_solver).
 
