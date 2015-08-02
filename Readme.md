@@ -25,6 +25,7 @@ ok
 ```
 
 ## Solvers
-Name                     | Description
--------------------------|-------------------------------------------
-`tsp_solver_evo_single`  | Evolutionary Algorithm, Single Process
+Name                           | Description
+-------------------------------|-------------------------------------------
+`tsp_solver_evo_single`        | Evolutionary Algorithm, Single Process
+`tsp_solver_bb_single_simple`  | Simple Branch&Bound, Single Process

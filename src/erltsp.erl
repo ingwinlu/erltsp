@@ -15,7 +15,7 @@ stop() ->
 
 -spec all_solvers() -> [Runner :: atom()].
 all_solvers() ->
-    [tsp_solver_evo_single].
+    [tsp_solver_evo_single, tsp_solver_bb_single_simple].
 
 -spec load_problem(File :: file:name_all()) -> Problem :: erltsp_problem:problem().
 load_problem(File) -> erltsp_problem:from_file(File).
