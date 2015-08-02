@@ -27,6 +27,10 @@ groups() -> [
             erltsp_solver_evo_single_iterate_hard
         ]
     },{
+        erltsp_solver_bb_single_simple, [], [
+           erltsp_solver_bb_single_simple_iterate
+        ]
+    },{
         erltsp_api, [], [
             erltsp_api_test
         ]
@@ -37,6 +41,7 @@ all() -> [
     {group, erltsp_problem},
     {group, erltsp_solver_sup},
     {group, erltsp_solver_evo_single},
+    {group, erltsp_solver_bb_single_simple},
     {group, erltsp_api}
 ].
 
@@ -113,31 +118,22 @@ erltsp_solver_evo_single_init(Config) ->
 erltsp_solver_evo_single_iterate(Config) ->
     Problem = get_problem(Config),
     {ok, State} = erltsp_solver_evo_single:init(Problem),
-    State1 = erltsp_solver_evo_single_iterate_(State, 1000),
-    Threshold = erltsp_problem:threshold(Problem),
-    ct:pal("Threshold was ~p~n", [Threshold]),
+    {ok, _State1} = erltsp_solver_evo_single:iterate(State),
     ok.
 
 erltsp_solver_evo_single_iterate_hard(Config) ->
+    Solver = erltsp_solver_evo_single,
     File = data_dir(Config) ++ "n30_ts225.4.tspp",
     Problem = erltsp_problem:from_file(File),
-    {ok, State} = erltsp_solver_evo_single:init(Problem),
+    stress_solver(Solver, Problem, 15000).
 
-    State1 = erltsp_solver_evo_single_iterate_(State, 1000),
-    State2 = erltsp_solver_evo_single_iterate_(State1, 1000),
-    State3 = erltsp_solver_evo_single_iterate_(State2, 1000),
-    State4 = erltsp_solver_evo_single_iterate_(State3, 2000),
-    State5 = erltsp_solver_evo_single_iterate_(State4, 5000),
-    State6 = erltsp_solver_evo_single_iterate_(State5, 5000),
-    State7 = erltsp_solver_evo_single_iterate_(State6, 10000),
-    ok.
 
-erltsp_solver_evo_single_iterate_(State, 0) ->
-    ct:pal("~p~n", [erltsp_solver_evo_single:best(State)]),
-    State;
-erltsp_solver_evo_single_iterate_(State, ToIterate) ->
-    {ok, State1} = erltsp_solver_evo_single:iterate(State),
-    erltsp_solver_evo_single_iterate_(State1, ToIterate-1).
+% erltsp_solver_bb_single_simple
+erltsp_solver_bb_single_simple_iterate(Config) ->
+    Solver = erltsp_solver_bb_single_simple,
+    File = data_dir(Config) ++ "n30_ts225.4.tspp",
+    Problem = erltsp_problem:from_file(File),
+    stress_solver(Solver, Problem, 15000).
 
 %erltsp_bindings
 erltsp_api_test(Config) ->
@@ -157,3 +153,24 @@ data_dir(Config) ->
 get_problem(Config) ->
     File = data_dir(Config) ++ "n10_a280.1.tspp",
     erltsp_problem:from_file(File).
+
+do_iterate(Solver, State, TRef) ->
+    receive
+        timeout -> {ok, State}
+    after 0 ->
+        handle_iterate(Solver:iterate(State), Solver, TRef)
+    end.
+
+handle_iterate({stop, State}, _, TRef) ->
+    timer:cancel(TRef),
+    ct:pal("stress solver finished early~n", []),
+    {ok, State};
+handle_iterate({ok, State}, Solver, TRef) ->
+    do_iterate(Solver, State, TRef).    
+
+stress_solver(Solver, Problem, TimeLimit) ->
+    {ok, TRef} = timer:send_after(TimeLimit, timeout),
+    {ok, State} = Solver:init(Problem),
+    {ok, State1} = do_iterate(Solver, State, TRef),
+    ct:pal("~p~n", [Solver:best(State1)]),
+    ok.
