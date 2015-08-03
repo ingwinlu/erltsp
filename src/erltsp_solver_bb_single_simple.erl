@@ -65,20 +65,20 @@ get_problem({empty, _}, State) ->
     {stop, State};
 get_problem({{value, Problem}, Queue1}, State) ->
     State1 = State#state{queue=Queue1},
-    case do_validate_problem(Problem, State1) of 
-        abort -> do_return(State1);
-        continue -> calculate_lower_bound(Problem, State1)
+    case validate_problem(Problem, State1#state.upper_bound) of
+        abort                -> do_return(State1);
+        {continue, Problem1} -> calculate_upper_bound(Problem1, State1)
     end.
 
-do_validate_problem(#bb_problem{lower_bound=LowerBound},
-                    #state{upper_bound=UpperBound}) ->
-    handle_validate_problem(LowerBound, UpperBound).
+validate_problem(Problem, UpperBound) ->
+    {ok, Problem1} = calculate_lower_bound(Problem),
+    handle_validate_problem(Problem1, UpperBound).
 
-handle_validate_problem(LowerBound, UpperBound) when 
-        is_number(UpperBound), UpperBound < LowerBound ->
+handle_validate_problem(#bb_problem{lower_bound=LowerBound}, UpperBound)
+        when is_number(UpperBound), UpperBound < LowerBound ->
     abort;
-handle_validate_problem(_LowerBound, _UpperBound) -> 
-    continue.
+handle_validate_problem(Problem, _UpperBound) ->
+    {continue, Problem}.
 
 do_return(State) ->
     {ok, State}.
@@ -87,8 +87,7 @@ calculate_lower_bound(
         Problem = #bb_problem{lower_bound=LowerBound,
                               edge_dict=EdgeDict,
                               from_nodes=FromNodes,
-                              to_nodes=ToNodes},
-        State = #state{}) ->
+                              to_nodes=ToNodes}) ->
     {ok, EdgeDict1, LowerBound1} = minimize_from(
                                      FromNodes, ToNodes,
                                      EdgeDict, LowerBound
@@ -100,10 +99,7 @@ calculate_lower_bound(
     Problem1 = Problem#bb_problem{
                  lower_bound=LowerBound2,
                  edge_dict=EdgeDict2},
-    case do_validate_problem(Problem1, State) of
-        abort -> do_return(State);
-        continue -> calculate_upper_bound(Problem1, State)
-    end.
+    {ok, Problem1}.
 
 minimize_from([], _ToNodes, EdgeDict, LowerBound) ->
     {ok, EdgeDict, LowerBound};
@@ -228,13 +224,12 @@ branch(Problem, State) ->
 branch([], _, _, _, _, _, State) ->
     do_return(State);
 branch([To | Candidates], [], EdgeDict, FromNodes, ToNodes, LowerBound,
-       State = #state{queue=Queue}) ->
+       State) ->
     RemoveKeys = [
         {From, To} || From <- FromNodes
     ],
     {ok, EdgeDict1} = edgedict_remove_keys(RemoveKeys, EdgeDict),
     Fixed = [To],
-%    FromNodes1 = FromNodes -- [To], still need to leave To
     ToNodes1 = ToNodes -- [To],
     BBProblem = #bb_problem{
         fixed = Fixed,
@@ -243,12 +238,11 @@ branch([To | Candidates], [], EdgeDict, FromNodes, ToNodes, LowerBound,
         to_nodes = ToNodes1,
         lower_bound = LowerBound
     },
-    Queue1 = queue:in(BBProblem, Queue),
-    State1 = State#state{queue=Queue1},
+    {ok, State1} = maybe_enqueue(BBProblem, State),
     branch(Candidates, [], EdgeDict, FromNodes, ToNodes, LowerBound, State1);
 branch([To | Candidates], [From | _ ] = Fixed, EdgeDict, FromNodes,
        ToNodes, LowerBound,
-       State = #state{problem=Problem, queue=Queue}) ->
+       State = #state{problem=Problem}) ->
     EdgeKey = {From, To},
     Edge = dict:fetch(EdgeKey, erltsp_problem:edgedict(Problem)),
     #{distance:=Distance} = Edge,
@@ -272,9 +266,7 @@ branch([To | Candidates], [From | _ ] = Fixed, EdgeDict, FromNodes,
         to_nodes = ToNodes1,
         lower_bound = LowerBound1
     },
-    %TODO check lower bound of new problem, don't add when to high
-    Queue1 = queue:in(BBProblem, Queue),
-    State1 = State#state{queue=Queue1},
+    {ok, State1} = maybe_enqueue(BBProblem, State),
     branch(Candidates, Fixed, EdgeDict, FromNodes, ToNodes, LowerBound, State1).
 
 edgedict_remove_keys([], EdgeDict) ->
@@ -283,18 +275,15 @@ edgedict_remove_keys([Key | Keys], EdgeDict) ->
     EdgeDict1 = dict:erase(Key, EdgeDict),
     edgedict_remove_keys(Keys, EdgeDict1).
     
-
-% check if lower bound is bigger than upper_bound,
-% skip if true
-%
-% if allowed = [], finish and look if
-% new best solution was found
-%
-% estimate lower_bound for branch
-%
-% else, spawn new problems with a new node picked
-% set their new lower bound
-% add problems to queue that qualify
+maybe_enqueue(Problem, State = #state{upper_bound=UpperBound, queue=Queue}) ->
+    case validate_problem(Problem, UpperBound) of
+        abort ->
+            {ok, State};
+        {continue, Problem1} ->
+            Queue1 = queue:in(Problem1, Queue),
+            State1 = State#state{queue=Queue1},
+            {ok, State1}
+    end.
 
 % best
 -spec best(State :: term()) -> {ok, Best :: term()}.
