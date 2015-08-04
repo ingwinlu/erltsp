@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0]).
 -export([all_solvers/0]).
--export([load_problem/1]).
+-export([load_problem/1, problem/1]).
 -export([solver_run/2, solver_stop/1, solver_best/1]).
 
 -spec start() -> {ok, [StartedApp :: atom()]}.
@@ -19,6 +19,10 @@ all_solvers() ->
 
 -spec load_problem(File :: file:name_all()) -> Problem :: erltsp_problem:problem().
 load_problem(File) -> erltsp_problem:from_file(File).
+
+-spec problem(N::non_neg_integer()) -> erltsp_problem:problem().
+problem(N) ->
+    erltsp_problem_handler:problem(N).
 
 -spec solver_run(Problem :: erltsp_problem:problem(),
                  Solver :: atom()) ->

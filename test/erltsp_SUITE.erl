@@ -7,6 +7,7 @@ init_per_suite(Config) ->
     Config.
 
 end_per_suite(_Config) ->
+    ok = application:stop(erltsp),
     ok.
 
 groups() -> [
@@ -38,9 +39,8 @@ end_per_testcase(_, _Config) ->
 
 % PROBLEM_LOADING
 
-parse_n10_a280_1(Config) ->
-    File = data_dir(Config) ++ "n10_a280.1.tspp",
-    Problem = erltsp_problem:from_file(File),
+parse_n10_a280_1(_Config) ->
+    Problem = erltsp:problem(1),
 
     10 = erltsp_problem:dimension(Problem),
     970.29 = erltsp_problem:threshold(Problem),
@@ -64,9 +64,8 @@ parse_n10_a280_1(Config) ->
     Precedences = erltsp_problem:precedences(Problem),
     [{1,5},{9,1}] == Precedences.
 
-parse_all_problems(Config) ->
-    TestDir = data_dir(Config),
-    TestFiles = filelib:wildcard(TestDir ++ "*.tspp"),
+parse_all_problems(_Config) ->
+    {ok, TestFiles} = erltsp_problem_handler:list(),
     AllProblems = lists:map(fun
         (File) ->
             erltsp_problem:from_file(File)
@@ -75,9 +74,8 @@ parse_all_problems(Config) ->
     ),
     15 = length(AllProblems).
 
-check_solutions(Config) ->
-    File = data_dir(Config) ++ "n10_a280.1.tspp",
-    Problem = erltsp_problem:from_file(File),
+check_solutions(_Config) ->
+    Problem = erltsp:problem(1),
     {error, solution_incomplete} = erltsp_problem:solution(Problem, [1,2]),
     TrivialSolution = lists:seq(1,10),
     TrivialLength = 1291.454436262999,
@@ -106,9 +104,8 @@ run_solver(Problem, Solver) ->
     ok.
 
 %erltsp_bindings
-erltsp_api_test(Config) ->
-    FilePath = data_dir(Config) ++ "n10_a280.1.tspp",
-    Problem = erltsp:load_problem(FilePath),
+erltsp_api_test(_Config) ->
+    Problem = erltsp:problem(1),
     {ok, Pid} = erltsp:solver_run(Problem, erltsp_solver_evo_single),
     timer:sleep(1000),
     {ok, Best} = erltsp:solver_best(Pid),
@@ -116,10 +113,5 @@ erltsp_api_test(Config) ->
     ok.
 
 % helpers
-data_dir(Config) ->
-    {_, DataDir} = lists:keyfind(data_dir, 1, Config),
-    DataDir.
-
-get_hard_problem(Config) ->
-    File = data_dir(Config) ++ "n30_ts225.4.tspp",
-    erltsp_problem:from_file(File).
+get_hard_problem(_Config) ->
+    erltsp:problem(15).

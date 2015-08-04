@@ -10,6 +10,7 @@ start_link() ->
 init([]) ->
     Procs = [
         erltsp_event(),
+        erltsp_problem_handler(),
         erltsp_solver_sup()
     ],
     {ok, {sup_flags(), Procs}}.
@@ -34,6 +35,20 @@ erltsp_event() ->
         shutdown => 5000,
         type => worker,
         modules => [erltsp_event]
+    }.
+
+erltsp_problem_handler() ->
+    #{
+        id => erltsp_problem_handler,
+        start => {
+                    erltsp_problem_handler,
+                    start_link,
+                    []
+                 },
+        restart => permanent,
+        shutdown => 5000,
+        type => worker,
+        modules => [erltsp_problem_handler]
     }.
 
 erltsp_solver_sup() ->
