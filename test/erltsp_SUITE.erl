@@ -58,8 +58,7 @@ parse_n10_a280_1(_Config) ->
     49 = maps:get(y, Node2),
 
     Edges = erltsp_problem:edgedict(Problem),
-    Edge_1_2 = dict:fetch({1,2}, Edges),
-    164.77863939236784 = maps:get(distance, Edge_1_2),
+    164.77863939236784 = dict:fetch({1,2}, Edges),
 
     Precedences = erltsp_problem:precedences(Problem),
     [{1,5},{9,1}] == Precedences.

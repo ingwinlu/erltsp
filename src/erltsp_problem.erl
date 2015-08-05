@@ -31,15 +31,9 @@
        }.
 
 -type edgedict() :: dict:dict(
-        {non_neg_integer(), non_neg_integer()},
-        edge()
+        {From :: non_neg_integer(), To :: non_neg_integer()},
+        Distance :: float()
     ).
-
--type edge() :: #{
-        from => non_neg_integer(),
-        to => non_neg_integer(),
-        distance => float()
-       }.
 
 -type precedence() :: {First :: non_neg_integer(),
                        Second :: non_neg_integer()}.
@@ -146,14 +140,10 @@ build_edges(NodeDict) ->
 
 build_edge(NodeDict, From, To) ->
     Key = {From, To},
-    Value = #{
-        from => From,
-        to => To,
-        distance => distance(
+    Value = distance(
             dict:fetch(From, NodeDict),
             dict:fetch(To, NodeDict)
-        )
-    },
+    ),
     {Key, Value}.
 
 
@@ -224,8 +214,8 @@ solution_length(EdgeDict, SolutionEdges) ->
     lists:foldl(
         fun
             (EdgeKey, Acc) ->
-                Edge = dict:fetch(EdgeKey, EdgeDict),
-                NewAcc = Acc + maps:get(distance, Edge),
+                Distance = dict:fetch(EdgeKey, EdgeDict),
+                NewAcc = Acc + Distance,
                 NewAcc
         end,
         0,

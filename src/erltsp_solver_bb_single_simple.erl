@@ -31,7 +31,6 @@ start_link(Problem) ->
 stop(Pid) ->
     erltsp_solver:stop(Pid).
 
-
 % init
 -spec init(Problem :: erltsp_problem:problem()) -> {ok, State0 :: term()}.
 init(Problem) ->
@@ -119,35 +118,36 @@ keys_from_to(FromList, ToList) ->
     [ {From, To} || From <- FromList, To <- ToList, From /= To ].
 
 minimize(EdgeKeys, EdgeDict, LowerBound) ->
-    GbTree = lists:foldl(
-        fun
-            (EdgeKey, Tree) ->
-                Edge = dict:fetch(EdgeKey, EdgeDict),
-                #{distance:=Distance} = Edge,
-                gb_trees:enter(Distance, Edge, Tree)
-        end,
-        gb_trees:empty(),
-        EdgeKeys
-    ),
-    {Minimum, _SmallestEdge} = gb_trees:smallest(GbTree),
-    EdgeDict1 = lists:foldl(
-        fun
-            (EdgeKey, Dict) ->
-                dict:update(
-                    EdgeKey,
-                    fun
-                        (Edge) ->
-                            #{distance:=Distance} = Edge,
-                            Edge#{distance:=Distance-Minimum}
-                    end,
-                    Dict
-                )
-        end,
-        EdgeDict,
-        EdgeKeys
-    ),
+    Minimum = find_smallest_distance(EdgeKeys, EdgeDict),
+    EdgeDict1 = subtract_smallest_distance(EdgeKeys, EdgeDict, Minimum),
     LowerBound1 = LowerBound + Minimum,
     {ok, EdgeDict1, LowerBound1}.
+
+find_smallest_distance(EdgeKeys, EdgeDict) ->
+    find_smallest_distance(EdgeKeys, EdgeDict, none).
+
+find_smallest_distance(_, _, Min = 0.0) ->
+    Min;
+find_smallest_distance([], _, Smallest) ->
+    Smallest;
+find_smallest_distance([EdgeKey | EdgeKeys], EdgeDict, Smallest) ->
+    Distance = dict:fetch(EdgeKey, EdgeDict),
+    find_smallest_distance(EdgeKeys, EdgeDict, erlang:min(Distance, Smallest)).
+
+subtract_smallest_distance(_, EdgeDict, 0.0) ->
+    EdgeDict;
+subtract_smallest_distance([], EdgeDict, _Subtrahend) ->
+    EdgeDict;
+subtract_smallest_distance([EdgeKey | EdgeKeys], EdgeDict, Subtrahend) ->
+    EdgeDict1 = dict:update(
+        EdgeKey,
+        fun
+            (Distance) ->
+                Distance-Subtrahend
+        end,
+        EdgeDict
+    ),
+    subtract_smallest_distance(EdgeKeys, EdgeDict1, Subtrahend).
 
 calculate_upper_bound(BBProblem = #bb_problem{
                                    fixed=Fixed,
@@ -174,8 +174,7 @@ nearestNeighbour(Fixed, [], _EdgeDict) ->
     {ok, Fixed};
 nearestNeighbour([], ToNodes, EdgeDict) ->
     Keys = dict:fetch_keys(EdgeDict),
-    {ok, Edge} = shortest_route(Keys, EdgeDict),
-    #{from := From, to := To} = Edge,
+    {ok, {From, To}} = shortest_route(EdgeDict, Keys),
     Fixed = [To, From],
     ToNodes1 = ToNodes -- Fixed,
     nearestNeighbour(Fixed, ToNodes1, EdgeDict);
@@ -183,31 +182,31 @@ nearestNeighbour([From | _] = Fixed, ToNodes, EdgeDict) ->
     Keys = [
         {From, To} || To <- ToNodes
     ],
-    {ok, Edge} = shortest_route(Keys, EdgeDict),
-    #{from := From, to := To} = Edge,
+    {ok, {From, To}} = shortest_route(EdgeDict, Keys),
     ToNodes1 = ToNodes -- [To],
     Fixed1 = [To | Fixed],
     nearestNeighbour(Fixed1, ToNodes1, EdgeDict).
 
-shortest_route(Keys, EdgeDict) ->
-    ShortestEdge = undefined,
-    shortest_route(Keys, EdgeDict, ShortestEdge).
+shortest_route(EdgeDict, Keys) ->
+    ShortestEdge = {undefined, undefined},
+    ShortestDistance = undefined,
+    shortest_route(EdgeDict, Keys, ShortestEdge, ShortestDistance).
 
-shortest_route([], _, Shortest) ->
-    return_route(Shortest);
-shortest_route([Key | Keys], EdgeDict, ShortestEdge) ->
-    Edge = dict:fetch(Key, EdgeDict),
-    is_shortest_route(Edge, Keys, EdgeDict, ShortestEdge).
+shortest_route(_EdgeDict, [], ShortestEdge, _ShortestDistance) ->
+    return_route(ShortestEdge);
+shortest_route(EdgeDict, [Key | Keys], ShortestEdge, ShortestDistance) ->
+    Distance = dict:fetch(Key, EdgeDict),
+    is_shortest_route(EdgeDict, Keys, ShortestEdge, ShortestDistance, Key, Distance).
 
-is_shortest_route(#{distance:=0.0} = Edge, _Keys, _EdgeDict, _Shortest) ->
-    return_route(Edge);
-is_shortest_route(#{distance:=NewDist}, Keys, EdgeDict,
-                  #{distance:=Dist} = Shortest) when NewDist > Dist ->
-    shortest_route(Keys, EdgeDict, Shortest);
-is_shortest_route(Edge, Keys, EdgeDict, _Shortest) ->
-    shortest_route(Keys, EdgeDict, Edge).
+is_shortest_route(_EdgeDict, _Keys, _ShortestEdge, _ShortestDistance, Key, 0.0) ->
+    return_route(Key);
+is_shortest_route(EdgeDict, Keys, ShortestEdge, ShortestDistance, _Key, Distance)
+        when Distance > ShortestDistance ->
+    shortest_route(EdgeDict, Keys, ShortestEdge, ShortestDistance);
+is_shortest_route(EdgeDict, Keys, _ShortestEdge, _ShortestDistance, Key, Distance) ->
+    shortest_route(EdgeDict, Keys, Key, Distance).
 
-return_route(Route) ->
+return_route(Route = {_From, _To}) ->
     {ok, Route}.
 
 maybe_improvement(NewLength, OldLength)
@@ -244,8 +243,7 @@ branch([To | Candidates], [From | _ ] = Fixed, EdgeDict, FromNodes,
        ToNodes, LowerBound,
        State = #state{problem=Problem}) ->
     EdgeKey = {From, To},
-    Edge = dict:fetch(EdgeKey, erltsp_problem:edgedict(Problem)),
-    #{distance:=Distance} = Edge,
+    Distance = dict:fetch(EdgeKey, erltsp_problem:edgedict(Problem)),
     RemoveKeysTo = [
         {F, To} || F <- FromNodes
     ],
