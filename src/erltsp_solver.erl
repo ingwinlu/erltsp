@@ -52,7 +52,7 @@ init(Parent, Problem, Solver) ->
 
     {ok, TRef} = timer:send_interval(
                    ?LOG_INTERVAL,
-                   {log, timer_log}
+                   {log, timer}
     ),
 
     State = #state{
@@ -136,7 +136,7 @@ handle_log(
                , iteration = Iteration}) ->
     Runtime = get_time() - StartTime,
     {ok, {Length, Solution}} = Solver:best(SolverState),
-    ok = erltsp_event:mark(Runtime, Iteration, Length, Solution, Mark),
+    ok = erltsp_event:Mark(Runtime, Iteration, Length, Solution),
     ok.
 
 get_time() ->

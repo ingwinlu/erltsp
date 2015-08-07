@@ -8,6 +8,7 @@
 
 
 -record(state, {
+    timer_counter = 0
 }).
 
 %% API
@@ -22,11 +23,18 @@ delete_handler() ->
 init([]) ->
     {ok, #state{}}.
 
-handle_event(Mark = {mark, _, _, _, _, _}, State) ->
-    error_logger:info_msg("~s", [mark_to_console(Mark)]),
+handle_event(Mark = {timer, _, _, _, _}, State = #state{timer_counter=5}) ->
+    log(Mark),
+    State1 = State#state{timer_counter=0},
+    {ok, State1};
+handle_event({timer, _, _, _, _}, State = #state{timer_counter=Counter}) ->
+    Counter1 = Counter + 1,
+    State1 = State#state{timer_counter = Counter1},
+    {ok, State1};
+handle_event(Mark = {_, _, _, _, _}, State) ->
+    log(Mark),
     {ok, State};
-handle_event(Msg, State) ->
-    error_logger:info_msg("~p~n", [Msg]),
+handle_event(_Msg, State) ->
     {ok, State}.
 
 handle_call(_Request, State) ->
@@ -42,7 +50,10 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-mark_to_console({mark, Runtime, Iteration, Length, Solution, Mark}) ->
+log(Mark) ->
+    error_logger:info_msg("~s", [mark_to_console(Mark)]).
+
+mark_to_console({Mark, Runtime, Iteration, Length, Solution}) ->
     lists:flatten(
       io_lib:format("Mark: ~p, Runtime(ms): ~p, Iteration: ~p~nSolution: ~p, ~p~n", [Mark, Runtime, Iteration, Length, Solution])
     ).
