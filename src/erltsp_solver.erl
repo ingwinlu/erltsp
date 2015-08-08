@@ -171,11 +171,11 @@ cleanup_state(#state{timer_log_ref=TRef}) ->
     ok.
 
 error_info(Name, Msg, Reason, State) ->
-    error_logger:info_msg("** Generic server ~p terminating~n"
-                        "** Last message in was ~p~n"
-                        "** When Server state == ~p~n"
-                        "** Reason for termination == ~n** ~p~n",
-                        [Name, Msg, State, Reason]
+    error_logger:info_msg("** ~p terminating~n"
+                          "** Last message in was ~p~n"
+                          "** When Server state == ~p~n"
+                          "** Reason for termination == ~n** ~p~n",
+                          [Name, Msg, State, Reason]
     ),
     ok.
 
