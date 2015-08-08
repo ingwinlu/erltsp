@@ -5,7 +5,8 @@
 
 %callbacks
 -callback init(Problem :: erltsp_problem:problem()) -> {ok, State0 :: term()}.
--callback iterate(State0 :: term()) -> {ok, State1 :: term()}.
+-callback iterate(State0 :: term()) -> {ok, State1 :: term()} |
+                                       {stop, FinalState :: term()}.
 -callback best(State :: term()) -> {ok, Best :: term()}.
 
 -record(state, {
@@ -75,57 +76,107 @@ loop(Parent, State) ->
               0 ->
                   iterate
           end,
-    handle_msg(Msg, Parent, State).
+    decode_msg(Msg, Parent, State).
 
-handle_msg(iterate, Parent, State) ->
-    handle_iteration(Parent, State);
-handle_msg({best, From}, Parent, State) ->
+decode_msg(Msg, Parent, State) ->
+    case Msg of
+        {system, From, Req} ->
+            sys:handle_system_msg(Req, From, Parent, ?MODULE,
+                                  [], {state, State});
+        {'EXIT', Parent, Reason} ->
+            handle_exit(Reason, Msg, State);
+        _ ->
+            handle_msg(Msg, Parent, State)
+    end.
+
+handle_msg(Msg, Parent, State) ->
+    Result = try_handle_msg(Msg, Parent, State),
+    case Result of
+        {'EXIT', R} -> handle_exit(R, Msg, State);
+        {'EXIT', R, Stacktrace} -> handle_exit(R, Stacktrace, Msg, State);
+        {stop, State1} -> handle_exit(solved, Msg, State1);
+        {ok, State1} -> loop(Parent, State1)
+    end.
+
+try_handle_msg(Msg, Parent, State) ->
+    try
+        do_handle_msg(Msg, Parent, State)
+    catch
+        throw:R ->
+            {'EXIT', R};
+        _:R ->
+            Stacktrace = erlang:get_stacktrace(),
+            {'EXIT', R, {R, Stacktrace}}
+    end.
+
+do_handle_msg(iterate, _Parent, State) ->
+    handle_iteration(State);
+do_handle_msg({best, From}, _Parent, State) ->
     Result = handle_best(State),
     From ! {best, self(), Result},
-    loop(Parent, State);
-handle_msg({log, Msg}, Parent, State) ->
+    {ok, State};
+do_handle_msg({log, Msg}, _Parent, State) ->
     ok = handle_log(Msg, State),
-    loop(Parent, State);
-handle_msg({system, From, Request}, Parent, State) ->
-    sys:handle_system_msg(Request, From, Parent,
-                          ?MODULE, [], {state, State});
-handle_msg({'EXIT', Parent, Reason}, Parent, State) ->
-    ok = handle_exit(State),
-    exit(Reason);
-handle_msg(Msg, Parent, State) ->
+    {ok, State};
+do_handle_msg(Msg, _Parent, State) ->
     error_logger:info_msg("unexpected msg ~p in ~p, ignoring~n",
                           [Msg, ?MODULE]
     ),
-    loop(Parent, State).
+    {ok, State}.
 
 system_continue(Parent, _, {state, State}) ->
     loop(Parent, State).
 
-system_terminate(Reason, _, _, {state, State}) ->
-    ok = handle_exit(State),
-    exit(Reason).
+-spec system_terminate(_, _, _, _) -> no_return().
+system_terminate(Reason, _Parent, _Debug, {state, State}) ->
+    handle_exit(Reason, [], State).
+
 
 system_code_change(Misc, _, _ ,_) ->
     {ok, Misc}.
 
-
-handle_iteration(Parent, State = #state{
-                            solver = Solver,
-                            solver_state = SolverState,
-                            iteration = Iteration}) ->
-    {ok, SolverState1} = Solver:iterate(SolverState),
+handle_iteration(State = #state{
+                    solver = Solver,
+                    solver_state = SolverState,
+                    iteration = Iteration}) ->
+    {IterateReturn, SolverState1} = Solver:iterate(SolverState),
     State1 = State#state{solver_state = SolverState1,
                          iteration = Iteration + 1},
-    loop(Parent, State1).
+    {IterateReturn, State1}.
 
 handle_best(#state{solver = Solver,
                    solver_state = SolverState}) ->
     Solver:best(SolverState).
 
-handle_exit(State = #state{timer_log_ref=TRef}) ->
-    {ok, cancel} = timer:cancel(TRef),
+-spec handle_exit(_,_,_) -> no_return().
+handle_exit(Reason, Msg, State) ->
+    handle_exit(Reason, Reason, Msg, State).
+
+-spec handle_exit(_,_,_,_) -> no_return().
+handle_exit(Reason, Report, Msg, State) ->
     ok = handle_log(stop, State),
+    cleanup_state(State),
+    case Reason of
+        normal -> exit(normal);
+        shutdown -> exit(shutdown);
+        {shutdown, _} = Shutdown -> exit(Shutdown);
+        _ ->
+            error_info(?MODULE, Msg, Report, State),
+            exit(Reason)
+    end.
+
+cleanup_state(#state{timer_log_ref=TRef}) ->
+    {ok, cancel} = timer:cancel(TRef),
     ok = erltsp_event_logger:delete_handler(),
+    ok.
+
+error_info(Name, Msg, Reason, State) ->
+    error_logger:info_msg("** Generic server ~p terminating~n"
+                        "** Last message in was ~p~n"
+                        "** When Server state == ~p~n"
+                        "** Reason for termination == ~n** ~p~n",
+                        [Name, Msg, State, Reason]
+    ),
     ok.
 
 handle_log(
